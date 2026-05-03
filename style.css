@@ -1,0 +1,547 @@
+:root {
+    --bg-color: #0a0a0c;
+    --primary: #c18f5a;
+    --accent: #e9edc9;
+    --text: #fefae0;
+    --glass: rgba(2, 6, 14, 0.58);
+    --glass-border: rgba(255, 255, 255, 0.12);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    touch-action: none;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(to bottom, #03050d 0%, #010308 100%);
+    overflow: hidden;
+    transform: none;
+    transform-origin: center center;
+}
+
+header {
+    position: absolute;
+    top: clamp(14px, 2.4vw, 30px);
+    left: clamp(14px, 2.4vw, 30px);
+    right: clamp(14px, 2.4vw, 30px);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    z-index: 10;
+}
+
+h1 {
+    font-size: clamp(0.9rem, 2.4vw, 1.5rem);
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--primary);
+    min-width: 0;
+    flex: 1 1 180px;
+}
+
+h1 span {
+    font-weight: 300;
+    color: var(--text);
+}
+
+#ui-overlay {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: min(100%, 420px);
+    flex: 1 1 260px;
+}
+
+.stat-card {
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    min-width: 92px;
+}
+
+.label {
+    font-size: 0.6rem;
+    font-weight: 600;
+    opacity: 0.6;
+    letter-spacing: 1px;
+}
+
+.value {
+    font-size: 1.2rem;
+    font-weight: 800;
+}
+
+.inventory-button,
+#inventory-close {
+    border: 1px solid var(--glass-border);
+    background: rgba(233, 237, 201, 0.14);
+    color: var(--text);
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.inventory-button {
+    min-height: 50px;
+    padding: 0 16px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    backdrop-filter: blur(10px);
+}
+
+.inventory-button:hover,
+#inventory-close:hover {
+    background: rgba(233, 237, 201, 0.24);
+}
+
+#inventory-panel {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: clamp(16px, 4vw, 42px);
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+#inventory-panel.hidden {
+    display: none;
+}
+
+.menu-frame {
+    width: min(94vw, 860px);
+    max-height: min(88vh, 720px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: clamp(14px, 2.4vw, 22px);
+    border-radius: 8px;
+    border: 4px solid #7b4e2d;
+    background:
+        linear-gradient(180deg, #d8b982 0%, #c79256 100%);
+    box-shadow:
+        inset 0 0 0 2px rgba(255, 239, 184, 0.55),
+        inset 0 0 0 8px rgba(84, 45, 24, 0.18),
+        0 28px 80px rgba(0, 0, 0, 0.55);
+    color: #2b1b10;
+}
+
+.inventory-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 0 0 auto;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(83, 46, 26, 0.28);
+}
+
+.inventory-header h2 {
+    font-size: clamp(1.25rem, 3vw, 2rem);
+    line-height: 1;
+    color: #503016;
+    letter-spacing: 0;
+}
+
+#inventory-close {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border-color: rgba(77, 42, 22, 0.45);
+    background: rgba(92, 48, 24, 0.16);
+    color: #2b1b10;
+    line-height: 1;
+}
+
+.menu-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    flex: 0 0 auto;
+    margin-bottom: 14px;
+}
+
+.menu-tab {
+    min-height: 42px;
+    border: 2px solid rgba(85, 48, 26, 0.36);
+    border-radius: 8px 8px 5px 5px;
+    background: rgba(95, 54, 30, 0.12);
+    color: #4a2b16;
+    font: inherit;
+    font-weight: 800;
+    cursor: default;
+}
+
+.menu-tab.active {
+    background: #f1d393;
+    border-color: rgba(85, 48, 26, 0.7);
+    box-shadow: inset 0 -4px 0 rgba(128, 75, 37, 0.14);
+}
+
+.menu-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 14px;
+    border-radius: 8px;
+    border: 3px solid rgba(85, 48, 26, 0.5);
+    background: rgba(95, 54, 30, 0.18);
+}
+
+#inventory-list {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(72px, 1fr));
+    grid-auto-rows: 92px;
+    gap: 10px;
+}
+
+.inventory-slot {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding: 10px;
+    border-radius: 8px;
+    background:
+        radial-gradient(circle at 50% 42%, rgba(255, 239, 184, 0.5), rgba(156, 92, 48, 0.16) 64%),
+        #a76436;
+    border: 3px solid #7c4a29;
+    box-shadow:
+        inset 0 3px 0 rgba(255, 241, 194, 0.35),
+        inset 0 -5px 0 rgba(78, 42, 23, 0.22);
+}
+
+.inventory-slot.empty {
+    background:
+        linear-gradient(135deg, rgba(77, 42, 22, 0.12), rgba(255, 239, 184, 0.1)),
+        rgba(98, 54, 29, 0.26);
+    border-color: rgba(92, 50, 27, 0.4);
+}
+
+.inventory-icon {
+    max-width: 52px;
+    max-height: 52px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 5px 4px rgba(42, 22, 11, 0.42));
+}
+
+.inventory-name {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 5px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.62rem;
+    line-height: 1;
+    font-weight: 800;
+    color: rgba(43, 27, 16, 0.78);
+}
+
+.inventory-count {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    min-width: 26px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    padding: 0 6px;
+    border-radius: 7px;
+    background: #f6df9b;
+    color: #2b1b10;
+    font-weight: 800;
+    font-size: 0.8rem;
+    line-height: 1;
+    border: 2px solid rgba(84, 45, 24, 0.28);
+}
+
+.menu-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 0 0 auto;
+    padding-top: 12px;
+    color: rgba(43, 27, 16, 0.72);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#instructions {
+    position: absolute;
+    bottom: clamp(14px, 2.4vw, 30px);
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0.7;
+    font-weight: 300;
+    font-size: 0.9rem;
+    pointer-events: none;
+    width: min(92vw, 620px);
+}
+
+#instructions span {
+    background: var(--glass);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+#game-over {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 12, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    transition: opacity 0.4s ease;
+}
+
+#game-over.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#game-over h2 {
+    font-size: 4rem;
+    font-weight: 800;
+    margin-bottom: 20px;
+    color: #e63946;
+}
+
+#game-over p {
+    max-width: min(88vw, 420px);
+    text-align: center;
+    margin-bottom: 24px;
+    line-height: 1.4;
+}
+
+#restart-btn {
+    background: var(--primary);
+    color: var(--bg-color);
+    border: none;
+    padding: 16px 32px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    text-transform: uppercase;
+}
+
+#restart-btn:hover {
+    transform: scale(1.05);
+    background: #e6b89c;
+}
+
+#mobile-controls {
+    display: none;
+    position: absolute;
+    left: max(22px, env(safe-area-inset-left));
+    bottom: max(24px, env(safe-area-inset-bottom));
+    z-index: 30;
+    pointer-events: none;
+}
+
+#joystick {
+    position: relative;
+    width: 126px;
+    height: 126px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: inset 0 0 28px rgba(255, 255, 255, 0.07), 0 16px 36px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+    touch-action: none;
+}
+
+#joystick-knob {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: rgba(212, 163, 115, 0.9);
+    border: 2px solid rgba(254, 250, 224, 0.72);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+    transform: translate(-50%, -50%);
+    transition: transform 0.08s ease-out;
+}
+
+@media (pointer: coarse), (max-width: 780px) {
+    #game-container {
+        transform: none;
+    }
+
+    header {
+        top: max(14px, env(safe-area-inset-top));
+        left: 16px;
+        right: 16px;
+        gap: 10px;
+    }
+
+    h1 {
+        font-size: 0.78rem;
+        max-width: 136px;
+    }
+
+    #ui-overlay {
+        gap: 6px;
+        max-width: calc(100vw - 32px);
+        justify-content: flex-start;
+    }
+
+    .stat-card {
+        min-width: 76px;
+        padding: 7px 9px;
+        border-radius: 10px;
+    }
+
+    .label {
+        font-size: 0.48rem;
+    }
+
+    .value {
+        font-size: 0.78rem;
+    }
+
+    .inventory-button {
+        min-height: 34px;
+        padding: 0 10px;
+        border-radius: 10px;
+        font-size: 0.68rem;
+    }
+
+    #inventory-panel {
+        padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+    }
+
+    .menu-frame {
+        width: 100%;
+        max-height: 86vh;
+        padding: 12px;
+        border-width: 3px;
+    }
+
+    .inventory-header {
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+    }
+
+    .inventory-header h2 {
+        font-size: 1.18rem;
+    }
+
+    #inventory-close {
+        width: 34px;
+        height: 34px;
+    }
+
+    .menu-tabs {
+        gap: 5px;
+        margin-bottom: 10px;
+    }
+
+    .menu-tab {
+        min-height: 34px;
+        font-size: 0.7rem;
+        border-width: 2px;
+    }
+
+    .menu-content {
+        padding: 8px;
+    }
+
+    #inventory-list {
+        grid-template-columns: repeat(4, minmax(58px, 1fr));
+        grid-auto-rows: 78px;
+        gap: 6px;
+    }
+
+    .inventory-slot {
+        padding: 7px;
+        border-width: 2px;
+    }
+
+    .inventory-icon {
+        max-width: 40px;
+        max-height: 40px;
+    }
+
+    .inventory-name {
+        left: 3px;
+        right: 3px;
+        bottom: 4px;
+        font-size: 0.52rem;
+    }
+
+    .inventory-count {
+        min-width: 22px;
+        height: 19px;
+        padding: 0 5px;
+        font-size: 0.68rem;
+        border-width: 1px;
+    }
+
+    .menu-footer {
+        padding-top: 8px;
+        font-size: 0.64rem;
+    }
+
+    #instructions {
+        display: none;
+    }
+
+    #mobile-controls {
+        display: block;
+    }
+
+    #game-over h2 {
+        font-size: 2.6rem;
+    }
+
+    #game-over p {
+        font-size: 0.95rem;
+        padding: 0 20px;
+    }
+}

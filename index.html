@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alces Alces Simulator</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-container">
+        <header>
+            <h1>Alces Alces <span>Simulator</span></h1>
+            <div id="ui-overlay">
+                <button id="inventory-toggle" class="inventory-button" type="button" aria-expanded="false" aria-controls="inventory-panel">
+                    Inventory
+                </button>
+            </div>
+        </header>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <aside id="inventory-panel" class="hidden" aria-label="Menu">
+            <div class="menu-frame">
+                <div class="inventory-header">
+                    <h2>Moose Menu</h2>
+                    <button id="inventory-close" type="button" aria-label="Close menu">x</button>
+                </div>
+                <nav class="menu-tabs" aria-label="Menu sections">
+                    <button class="menu-tab active" type="button">Inventory</button>
+                    <button class="menu-tab" type="button">Map</button>
+                    <button class="menu-tab" type="button">Skills</button>
+                    <button class="menu-tab" type="button">Notes</button>
+                </nav>
+                <section class="menu-content" aria-label="Inventory">
+                    <div id="inventory-list"></div>
+                </section>
+                <div class="menu-footer">
+                    <span>Roadside goods</span>
+                    <span>Press I to close</span>
+                </div>
+            </div>
+        </aside>
+
+        <div id="instructions">
+            <p>Use <span>WASD</span> or <span>ARROWS</span> to move</p>
+            <p>Press <span>I</span> to open inventory. Scavenge wrecks at the side of the road!</p>
+        </div>
+
+        <div id="mobile-controls" aria-hidden="true">
+            <div id="joystick">
+                <div id="joystick-knob"></div>
+            </div>
+        </div>
+
+        <div id="game-over" class="hidden">
+            <h2>GAME OVER</h2>
+            <p>The moose needs a break.</p>
+            <button id="restart-btn">Try Again</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+
+</html>

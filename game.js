@@ -7,7 +7,6 @@ const inventoryList = document.getElementById('inventory-list');
 const skillsList = document.getElementById('skills-list');
 const mooseCoinsEl = document.getElementById('moose-coins');
 const menuHelp = document.getElementById('menu-help');
-const menuFrame = document.querySelector('.menu-frame');
 const healthFill = document.getElementById('health-fill');
 const energyFill = document.getElementById('energy-fill');
 const coldFill = document.getElementById('cold-fill');
@@ -173,8 +172,10 @@ function resize() {
 
     if (typeof initTrees === 'function') initTrees();
     if (moose) {
-        const maxX = Math.max(MOOSE_SCREEN_PADDING, canvas.width - moose.width - MOOSE_SCREEN_PADDING);
-        moose.x = Math.max(MOOSE_SCREEN_PADDING, Math.min(maxX, moose.x));
+        moose.x = Math.max(
+            MOOSE_SCREEN_PADDING,
+            Math.min(canvas.width - moose.width - MOOSE_SCREEN_PADDING, canvas.width / 2 - moose.width / 2)
+        );
         moose.y = Math.max(MOOSE_SCREEN_PADDING, Math.min(canvas.height - moose.height - MOOSE_SCREEN_PADDING, moose.y));
     }
 }
@@ -246,7 +247,7 @@ const INVENTORY_ITEMS = [
     { key: 'furniture', label: 'Furniture', src: 'furniture.png', value: 75 },
     { key: 'constructionMaterial', label: 'Construction material', src: 'construction material.png', value: 50 }
 ];
-const INVENTORY_SLOT_COUNT = 15;
+const INVENTORY_SLOT_COUNT = 24;
 const SKILL_BASE_COST = 2000;
 const SKILL_COST_GROWTH = 1.65;
 const SKILLS = [
@@ -596,6 +597,7 @@ function renderSkills() {
 }
 
 function upgradeSkill(key) {
+    if (activeShopKey !== 'skills') return;
     if (!Object.prototype.hasOwnProperty.call(skillLevels, key)) return;
     const cost = getSkillUpgradeCost(key);
     if (mooseCoins < cost) return;
@@ -605,6 +607,7 @@ function upgradeSkill(key) {
 }
 
 function sellInventoryItem(key, amount) {
+    if (activeShopKey !== 'sell') return;
     const item = getInventoryItem(key);
     if (!item || inventory[key] <= 0) return;
     const sold = Math.min(amount, inventory[key]);
@@ -646,7 +649,6 @@ function setInventoryOpen(isOpen) {
 
 function setMenuTab(tabName) {
     activeMenuTab = tabName;
-    if (menuFrame) menuFrame.dataset.activeTab = tabName;
     menuTabs.forEach(tab => {
         const isActive = tab.dataset.menuTab === tabName;
         tab.classList.toggle('active', isActive);
@@ -674,12 +676,29 @@ const CAR_WIDTH = 68;
 const CAR_HEIGHT = 34;
 const MOOSE_SCREEN_PADDING = 8;
 const LANTERN_BLOCK_RADIUS = 32;
+const BIOMES = [
+    { name: 'Pine Start', grass: '#183323', tint: 'rgba(30, 86, 55, 0.28)', road: 'rgba(8, 10, 9, 0.78)' },
+    { name: 'Cold Flats', grass: '#203743', tint: 'rgba(62, 130, 150, 0.25)', road: 'rgba(13, 18, 21, 0.78)' },
+    { name: 'Amber Steppe', grass: '#3b3320', tint: 'rgba(155, 116, 42, 0.24)', road: 'rgba(20, 16, 10, 0.78)' },
+    { name: 'Purple Moor', grass: '#302840', tint: 'rgba(106, 74, 150, 0.25)', road: 'rgba(18, 13, 24, 0.78)' }
+];
+const MAP_SCREENS = ['bazaar', 'road', 'border'];
+const BAZAAR_STANDS = [
+    { key: 'sell', label: 'Sell items', tab: 'inventory', color: '#8a4a28' },
+    { key: 'clothes', label: 'Clothes', tab: 'map', color: '#5f5ca8' },
+    { key: 'food', label: 'Food', tab: 'notes', color: '#4f8a3f' },
+    { key: 'skills', label: 'Skills', tab: 'skills', color: '#9a7a2f' }
+];
 
 let gameActive = true;
 let cars = [];
 let trees = [];
 let frame = 0;
 let spawnedVehicleCount = 0;
+let biomeIndex = 0;
+let mapScreenIndex = 0;
+let activeShopKey = null;
+let activeShopRow = 0;
 const keys = {};
 const joystickInput = {
     active: false,
@@ -725,12 +744,190 @@ function initTrees() {
 }
 resize();
 
+function getCurrentBiome() {
+    return BIOMES[biomeIndex % BIOMES.length];
+}
+
+function getCurrentMapScreen() {
+    return MAP_SCREENS[mapScreenIndex];
+}
+
+function getBazaarRoadTop() {
+    return ROAD_TOP + 95;
+}
+
+function getScreenStartY() {
+    if (getCurrentMapScreen() === 'bazaar') {
+        return getBazaarRoadTop() + 60;
+    }
+    return START_Y;
+}
+
+function placeMooseAtScreenStart() {
+    if (!moose) return;
+    moose.x = MOOSE_SCREEN_PADDING + 18;
+    moose.y = getScreenStartY();
+}
+
+function placeMooseAtScreenEnd() {
+    if (!moose) return;
+    moose.x = canvas.width - moose.width - MOOSE_SCREEN_PADDING - 18;
+    moose.y = getScreenStartY();
+}
+
+function resetScreenTraffic() {
+    cars = [];
+    spawnedVehicleCount = 0;
+}
+
+function advanceMapScreen() {
+    mapScreenIndex++;
+    resetScreenTraffic();
+    if (mapScreenIndex >= MAP_SCREENS.length) {
+        mapScreenIndex = 0;
+        biomeIndex++;
+    }
+    placeMooseAtScreenStart();
+    if (typeof initTrees === 'function') initTrees();
+}
+
+function retreatMapScreen() {
+    if (mapScreenIndex <= 0 && biomeIndex <= 0) return;
+    mapScreenIndex--;
+    resetScreenTraffic();
+    if (mapScreenIndex < 0) {
+        mapScreenIndex = MAP_SCREENS.length - 1;
+        biomeIndex = Math.max(0, biomeIndex - 1);
+    }
+    placeMooseAtScreenEnd();
+    if (typeof initTrees === 'function') initTrees();
+}
+
+function maybeChangeMapScreen(dx) {
+    if (!moose || dx === 0) return;
+    if (dx > 0 && moose.x + moose.width >= canvas.width - MOOSE_SCREEN_PADDING) {
+        advanceMapScreen();
+    } else if (dx < 0 && moose.x <= MOOSE_SCREEN_PADDING) {
+        retreatMapScreen();
+    }
+}
+
+function getBazaarStandRects() {
+    const areaW = Math.max(360, canvas.width - 110);
+    const gap = 18;
+    const standW = Math.max(86, Math.min(150, (areaW - gap * 3) / 4));
+    const startX = (canvas.width - (standW * 4 + gap * 3)) / 2;
+    const bRoadTop = getBazaarRoadTop();
+    const standY = Math.max(65, bRoadTop - 165);
+    return BAZAAR_STANDS.map((stand, index) => ({
+        ...stand,
+        x: startX + index * (standW + gap),
+        y: standY,
+        width: standW,
+        height: 122
+    }));
+}
+
+function getNearbyBazaarStand() {
+    if (getCurrentMapScreen() !== 'bazaar' || !moose) return null;
+    const mooseCenterX = moose.x + moose.width / 2;
+    const mooseCenterY = moose.y + moose.height / 2;
+    return getBazaarStandRects().find(stand => (
+        mooseCenterX >= stand.x - 24 &&
+        mooseCenterX <= stand.x + stand.width + 24 &&
+        mooseCenterY >= stand.y - 18 &&
+        mooseCenterY <= stand.y + stand.height + 82
+    )) || null;
+}
+
+function openBazaarShop(stand) {
+    if (!stand) return false;
+    activeShopKey = stand.key;
+    activeShopRow = 0;
+    Object.keys(keys).forEach(key => keys[key] = false);
+    resetJoystick();
+    return true;
+}
+
+function closeBazaarShop() {
+    activeShopKey = null;
+    activeShopRow = 0;
+}
+
+function getActiveShopStand() {
+    return BAZAAR_STANDS.find(stand => stand.key === activeShopKey) || null;
+}
+
+function getShopRows() {
+    if (activeShopKey === 'sell') {
+        const collectedItems = INVENTORY_ITEMS.filter(item => inventory[item.key] > 0);
+        return collectedItems.length > 0
+            ? collectedItems.map(item => ({
+                key: item.key,
+                title: `${item.label} x${inventory[item.key]}`,
+                detail: `Sell 1 for ${getItemSellValue(item)} MC`,
+                action: 'Sell'
+            }))
+            : [{ key: 'empty', title: 'No items to sell yet', detail: 'Collect wreck loot on the road, then come back here.', action: '' }];
+    }
+    if (activeShopKey === 'food') {
+        return ['burgers', 'iceCream', 'cigarettePacks'].map(key => {
+            const item = getInventoryItem(key);
+            return {
+                key,
+                title: item.label,
+                detail: `Buy 1 for ${getItemSellValue(item)} MC. Owned: ${inventory[key]}`,
+                action: 'Buy'
+            };
+        });
+    }
+    if (activeShopKey === 'skills') {
+        return SKILLS.map(skill => ({
+            key: skill.key,
+            title: `${skill.name} level ${skillLevels[skill.key] || 1}`,
+            detail: `Upgrade for ${getSkillUpgradeCost(skill.key)} MC`,
+            action: 'Upgrade'
+        }));
+    }
+    if (activeShopKey === 'clothes') {
+        return [{ key: 'empty', title: 'Clothes shop placeholder', detail: 'Clothes buying will go here later.', action: '' }];
+    }
+    return [];
+}
+
+function clampActiveShopRow() {
+    const rows = getShopRows();
+    activeShopRow = Math.max(0, Math.min(Math.max(0, rows.length - 1), activeShopRow));
+}
+
+function useActiveShopRow() {
+    const rows = getShopRows();
+    clampActiveShopRow();
+    const row = rows[activeShopRow];
+    if (!row || row.key === 'empty') return;
+
+    if (activeShopKey === 'sell') {
+        sellInventoryItem(row.key, 1);
+    } else if (activeShopKey === 'food') {
+        const item = getInventoryItem(row.key);
+        const price = getItemSellValue(item);
+        if (item && mooseCoins >= price) {
+            mooseCoins -= price;
+            inventory[row.key]++;
+            renderInventory();
+        }
+    } else if (activeShopKey === 'skills') {
+        upgradeSkill(row.key);
+    }
+    clampActiveShopRow();
+}
+
 function isPointInsideLantern(x, y, padding = 0) {
     return trees.some(tree => tree.isLantern && Math.hypot(x - tree.x, y - tree.y) < LANTERN_BLOCK_RADIUS + padding);
 }
 
 function findSafeMooseSpawn() {
-    const spawnY = START_Y;
+    const spawnY = getScreenStartY();
     const centerX = canvas.width / 2 - MOOSE_WIDTH / 2;
     const candidates = [0, 1, -1, 2, -2, 3, -3, 4, -4].flatMap(step => [
         centerX + step * 36,
@@ -813,6 +1010,7 @@ moose = {
         if (this.moving && (this.x !== previousX || this.y !== previousY)) {
             vitals.energy = clampStat(vitals.energy - getEnergyDrain());
         }
+        maybeChangeMapScreen(dx);
 
         // SCAVENGING
         for (let i = cars.length - 1; i >= 0; i--) {
@@ -1070,6 +1268,7 @@ class Car {
 }
 
 function spawnCars() {
+    if (getCurrentMapScreen() !== 'road') return;
     if (frame % 284 === 0) {
         const lane = Math.floor(Math.random() * LANE_COUNT);
         const forcedTypes = ['truck', 'car', 'van'];
@@ -1097,8 +1296,10 @@ function isMooseTouchingLantern(target) {
 }
 
 function drawBackground() {
+    const biome = getCurrentBiome();
+    const screen = getCurrentMapScreen();
     // Fill everything with grass to avoid any black gaps
-    ctx.fillStyle = '#183323';
+    ctx.fillStyle = biome.grass;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (grassImg.complete && grassImg.naturalWidth > 0) {
         const tileSize = 96;
@@ -1107,9 +1308,21 @@ function drawBackground() {
                 ctx.drawImage(grassImg, x, y, tileSize, tileSize);
             }
         }
+        ctx.fillStyle = biome.tint;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    ctx.fillStyle = '#080a09';
+    if (screen === 'bazaar') {
+        drawBazaarScreen(biome);
+        return;
+    }
+
+    if (screen === 'border') {
+        drawBorderScreen(biome);
+        return;
+    }
+
+    ctx.fillStyle = biome.road;
     ctx.fillRect(0, ROAD_TOP + 25, canvas.width, ROAD_BOTTOM - ROAD_TOP);
 
     if (roadImg.complete && roadImg.naturalWidth > 0) {
@@ -1132,6 +1345,200 @@ function drawBackground() {
         ctx.fillStyle = '#050506';
         ctx.fillRect(0, ROAD_TOP, canvas.width, ROAD_BOTTOM - ROAD_TOP);
     }
+}
+
+function drawBazaarScreen(biome) {
+    const bRoadTop = getBazaarRoadTop();
+    const roadH = ROAD_BOTTOM - ROAD_TOP;
+
+    // 1. Draw Lower Road for Bazaar
+    ctx.fillStyle = biome.road;
+    ctx.fillRect(0, bRoadTop, canvas.width, roadH);
+
+    if (roadImg.complete && roadImg.naturalWidth > 0) {
+        const drawH = roadH;
+        const w = drawH * (roadImg.naturalWidth / roadImg.naturalHeight);
+        const distance = w - 1;
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        for (let x = 0; x < canvas.width; x += distance) {
+            ctx.drawImage(roadImg, x, bRoadTop, w, drawH);
+        }
+        ctx.restore();
+    } else {
+        ctx.fillStyle = '#050506';
+        ctx.fillRect(0, bRoadTop, canvas.width, roadH);
+    }
+
+    const stands = getBazaarStandRects();
+
+    // 2. Draw Marketplace Plaza Ground Base above the road
+    if (stands.length > 0) {
+        const plazaX = Math.max(20, stands[0].x - 24);
+        const plazaW = Math.min(canvas.width - 40, (stands[stands.length - 1].x + stands[stands.length - 1].width + 24) - plazaX);
+        const plazaY = Math.max(15, stands[0].y - 34);
+        const plazaH = (bRoadTop - 10) - plazaY;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(44, 32, 20, 0.55)';
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(plazaX, plazaY, plazaW, plazaH, 14);
+        } else {
+            ctx.rect(plazaX, plazaY, plazaW, plazaH);
+        }
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(212, 164, 96, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Marketplace cobblestone/plank pattern lines
+        ctx.strokeStyle = 'rgba(212, 164, 96, 0.08)';
+        ctx.lineWidth = 1;
+        for (let px = plazaX + 24; px < plazaX + plazaW; px += 36) {
+            ctx.beginPath();
+            ctx.moveTo(px, plazaY + 4);
+            ctx.lineTo(px, plazaY + plazaH - 4);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // 3. Marketplace Header Title
+    ctx.fillStyle = 'rgba(244, 228, 183, 0.95)';
+    ctx.font = '800 22px Outfit, sans-serif';
+    ctx.fillText(`${biome.name} Marketplace`, 54, 40);
+    ctx.font = '700 13px Outfit, sans-serif';
+    ctx.fillStyle = 'rgba(244, 228, 183, 0.78)';
+    ctx.fillText('Press E near a stand to shop. Walk right for the road, left to return.', 56, 58);
+
+    // 4. Render Four Marketplace Stands
+    const nearbyStand = getNearbyBazaarStand();
+    stands.forEach(stand => {
+        // Stand main structure
+        ctx.fillStyle = 'rgba(39, 24, 15, 0.95)';
+        ctx.fillRect(stand.x, stand.y, stand.width, stand.height);
+
+        // Stand colorful awning canopy roof
+        ctx.fillStyle = stand.color;
+        ctx.fillRect(stand.x + 4, stand.y - 24, stand.width - 8, 26);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.fillRect(stand.x + 4, stand.y - 4, stand.width - 8, 4);
+
+        // Front counter display board
+        ctx.fillStyle = 'rgba(236, 184, 84, 0.95)';
+        ctx.fillRect(stand.x + 10, stand.y + stand.height - 28, stand.width - 20, 18);
+
+        // Merchant sprite behind counter
+        const sellerX = stand.x + stand.width / 2;
+        const sellerY = stand.y + 55;
+        ctx.fillStyle = '#8b5a2b';
+        ctx.fillRect(sellerX - 13, sellerY - 4, 26, 28);
+        ctx.fillStyle = '#c47a35';
+        ctx.fillRect(sellerX - 18, sellerY - 20, 36, 22);
+        ctx.fillStyle = '#e5b36d';
+        ctx.fillRect(sellerX - 23, sellerY - 28, 12, 12);
+        ctx.fillRect(sellerX + 11, sellerY - 28, 12, 12);
+
+        // Stand title text
+        ctx.fillStyle = '#f4e4b7';
+        ctx.font = '800 13px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(stand.label, stand.x + stand.width / 2, stand.y + stand.height - 42);
+
+        // Highlight nearby stand with E prompt badge
+        if (nearbyStand && nearbyStand.key === stand.key) {
+            ctx.strokeStyle = 'rgba(244, 228, 183, 0.95)';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(stand.x - 4, stand.y - 28, stand.width + 8, stand.height + 32);
+
+            ctx.fillStyle = 'rgba(236, 184, 84, 0.95)';
+            ctx.beginPath();
+            ctx.arc(stand.x + stand.width / 2, stand.y - 38, 13, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#1c120c';
+            ctx.font = '900 13px Outfit, sans-serif';
+            ctx.fillText('E', stand.x + stand.width / 2, stand.y - 34);
+        }
+        ctx.textAlign = 'left';
+    });
+}
+
+function drawBorderScreen(biome) {
+    const gateX = Math.max(70, canvas.width * 0.5 - 160);
+    const gateY = ROAD_TOP - 58;
+    const gateW = 320;
+    const gateH = ROAD_BOTTOM - ROAD_TOP + 130;
+    ctx.fillStyle = 'rgba(220, 226, 218, 0.94)';
+    ctx.fillRect(gateX, gateY, gateW, gateH);
+    ctx.fillStyle = 'rgba(35, 42, 44, 0.96)';
+    ctx.fillRect(gateX + 24, gateY + 34, gateW - 48, 34);
+    ctx.fillStyle = 'rgba(125, 139, 139, 0.92)';
+    ctx.fillRect(gateX + gateW * 0.5 - 12, gateY + 68, 24, gateH - 68);
+    ctx.fillStyle = 'rgba(244, 228, 183, 0.96)';
+    ctx.font = '800 24px Outfit, sans-serif';
+    ctx.fillText('BORDER GATE', gateX + 46, gateY + 60);
+    ctx.font = '700 14px Outfit, sans-serif';
+    ctx.fillText(`Leaving ${biome.name}`, gateX + 62, gateY + gateH - 28);
+}
+
+function drawShopView() {
+    const stand = getActiveShopStand();
+    if (!stand) return;
+
+    const panelW = Math.min(620, canvas.width - 48);
+    const panelH = Math.min(390, canvas.height - 58);
+    const x = (canvas.width - panelW) / 2;
+    const y = (canvas.height - panelH) / 2;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(38, 24, 18, 0.96)';
+    ctx.fillRect(x, y, panelW, panelH);
+    ctx.strokeStyle = stand.color;
+    ctx.lineWidth = 5;
+    ctx.strokeRect(x + 4, y + 4, panelW - 8, panelH - 8);
+
+    ctx.fillStyle = '#f4e4b7';
+    ctx.font = '800 26px Outfit, sans-serif';
+    ctx.fillText(stand.label, x + 28, y + 48);
+    ctx.font = '700 13px Outfit, sans-serif';
+    ctx.fillText('Up/Down select - Enter buy/sell - Esc close', x + panelW - 286, y + 46);
+
+    const rowX = x + 34;
+    let rowY = y + 88;
+    const rowW = panelW - 68;
+    const rows = getShopRows();
+    clampActiveShopRow();
+    const drawRow = (row, index) => {
+        const isActive = index === activeShopRow && row.key !== 'empty';
+        ctx.fillStyle = isActive ? 'rgba(244, 228, 183, 0.22)' : 'rgba(244, 228, 183, 0.1)';
+        ctx.fillRect(rowX, rowY, rowW, 44);
+        if (isActive) {
+            ctx.strokeStyle = '#f4e4b7';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(rowX + 2, rowY + 2, rowW - 4, 40);
+        }
+        ctx.fillStyle = '#f4e4b7';
+        ctx.font = '800 15px Outfit, sans-serif';
+        ctx.fillText(row.title, rowX + 14, rowY + 19);
+        ctx.font = '700 12px Outfit, sans-serif';
+        ctx.fillStyle = 'rgba(244, 228, 183, 0.72)';
+        ctx.fillText(row.detail, rowX + 14, rowY + 36);
+        if (row.action) {
+            ctx.fillStyle = '#f4e4b7';
+            ctx.font = '800 13px Outfit, sans-serif';
+            ctx.fillText(row.action, rowX + rowW - 86, rowY + 27);
+        }
+        rowY += 52;
+    };
+
+    rows.slice(0, 5).forEach(drawRow);
+    ctx.fillStyle = '#f4e4b7';
+    ctx.font = '800 15px Outfit, sans-serif';
+    ctx.fillText(`${mooseCoins} MC`, x + 28, y + panelH - 24);
+    ctx.restore();
 }
 
 function drawTree(tree) {
@@ -1174,13 +1581,14 @@ function drawTree(tree) {
 }
 
 function update() {
-    if (!gameActive || isInventoryOpen()) return;
+    if (!gameActive || isInventoryOpen() || activeShopKey) return;
     if (moose && moose.isActionAnimating()) return;
     frame++;
     if (crashInvulnerability > 0) crashInvulnerability--;
     vitals.cold = clampStat(vitals.cold + getColdGain());
     moose.update();
     spawnCars();
+    if (getCurrentMapScreen() !== 'road') cars = [];
     for (let i = cars.length - 1; i >= 0; i--) {
         const car = cars[i];
         car.update();
@@ -1198,7 +1606,17 @@ function update() {
 function renderScene() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBackground();
-    const all = [moose, ...cars, ...trees].sort((a, b) => {
+    const screen = getCurrentMapScreen();
+    let visibleTrees = [];
+    if (screen === 'road') {
+        visibleTrees = trees;
+    } else if (screen === 'bazaar') {
+        const bRoadTop = getBazaarRoadTop();
+        visibleTrees = trees.filter(t => t.y > bRoadTop + 140);
+    } else {
+        visibleTrees = trees.filter(t => t.y > ROAD_TOP + 140);
+    }
+    const all = [moose, ...cars, ...visibleTrees].sort((a, b) => {
         const yA = a.y !== undefined ? a.y : a.currentY;
         const yB = b.y !== undefined ? b.y : b.currentY;
         return yA - yB;
@@ -1213,6 +1631,15 @@ function renderScene() {
     gradient.addColorStop(1, 'rgba(0,0,0,0.76)');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const biome = getCurrentBiome();
+    const screenName = getCurrentMapScreen();
+    ctx.save();
+    ctx.fillStyle = 'rgba(244, 228, 183, 0.92)';
+    ctx.font = '700 14px Outfit, sans-serif';
+    ctx.fillText(`${biome.name} - ${screenName}`, 18, canvas.height - 20);
+    ctx.restore();
+    drawShopView();
 }
 
 function draw() {
@@ -1235,6 +1662,8 @@ function restart() {
     cars = [];
     frame = 0;
     spawnedVehicleCount = 0;
+    biomeIndex = 0;
+    mapScreenIndex = 0;
     mooseCoins = 0;
     activeInventoryKey = null;
     vitals = {
@@ -1268,6 +1697,8 @@ function renderGameToText() {
         deathReason,
         paused: isInventoryOpen(),
         inventoryOpen: isInventoryOpen(),
+        shopOpen: Boolean(activeShopKey),
+        activeShopKey,
         mooseCoins,
         hoveredInventoryItem: activeInventoryKey,
         inventory: { ...inventory },
@@ -1281,6 +1712,9 @@ function renderGameToText() {
         moose: {
             x: Math.round(moose.x),
             y: Math.round(moose.y),
+            biome: getCurrentBiome().name,
+            mapScreen: getCurrentMapScreen(),
+            nearbyBazaarStand: getNearbyBazaarStand() ? getNearbyBazaarStand().key : null,
             width: moose.width,
             height: moose.height,
             direction: moose.direction,
@@ -1366,14 +1800,26 @@ renderInventory();
 setMenuTab(activeMenuTab);
 
 window.addEventListener('keydown', e => {
+    if (activeShopKey) {
+        e.preventDefault();
+        if (!e.repeat && (e.code === 'Escape' || e.code === 'KeyE')) closeBazaarShop();
+        else if (!e.repeat && (e.code === 'ArrowDown' || e.code === 'KeyS')) {
+            activeShopRow++;
+            clampActiveShopRow();
+        } else if (!e.repeat && (e.code === 'ArrowUp' || e.code === 'KeyW')) {
+            activeShopRow--;
+            clampActiveShopRow();
+        } else if (!e.repeat && (e.code === 'Enter' || e.code === 'Space')) {
+            useActiveShopRow();
+        }
+        return;
+    }
     if (e.code === 'KeyI' && !e.repeat) {
         toggleInventory();
         return;
     }
     if (isInventoryOpen() && !e.repeat && (e.code === 'KeyE' || e.code === 'KeyF' || e.code === 'KeyT')) {
         e.preventDefault();
-        const sellAmount = e.code === 'KeyT' ? inventory[activeInventoryKey] : e.code === 'KeyF' ? 10 : 1;
-        sellInventoryItem(activeInventoryKey, sellAmount);
         return;
     }
     if (isInventoryOpen() && !e.repeat && e.code === 'KeyU') {
@@ -1386,6 +1832,10 @@ window.addEventListener('keydown', e => {
         return;
     }
     if (!e.repeat && e.code === 'KeyE') {
+        if (openBazaarShop(getNearbyBazaarStand())) {
+            e.preventDefault();
+            return;
+        }
         eatQuickFood();
         return;
     }

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alces Alces Simulator</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="classic-menu.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
@@ -37,20 +38,16 @@
         </div>
 
         <aside id="inventory-panel" class="hidden" aria-label="Menu">
-            <div class="menu-frame" data-active-tab="inventory">
+            <div class="menu-frame">
                 <div class="inventory-header">
                     <h2>Moose Menu</h2>
                     <button id="inventory-close" type="button" aria-label="Close menu">x</button>
                 </div>
                 <nav class="menu-tabs" aria-label="Menu sections">
-                    <button class="menu-tab active" type="button" data-menu-tab="inventory" aria-label="Inventory">
-                    </button>
-                    <button class="menu-tab" type="button" data-menu-tab="skills" aria-label="Skills">
-                    </button>
-                    <button class="menu-tab" type="button" data-menu-tab="map" aria-label="Map">
-                    </button>
-                    <button class="menu-tab" type="button" data-menu-tab="notes" aria-label="Notes">
-                    </button>
+                    <button class="menu-tab active" type="button" data-menu-tab="inventory">Inventory</button>
+                    <button class="menu-tab" type="button" data-menu-tab="map">Map</button>
+                    <button class="menu-tab" type="button" data-menu-tab="skills">Skills</button>
+                    <button class="menu-tab" type="button" data-menu-tab="notes">Notes</button>
                 </nav>
                 <section class="menu-content menu-section active" data-menu-section="inventory" aria-label="Inventory">
                     <div id="inventory-list"></div>

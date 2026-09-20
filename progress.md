@@ -77,6 +77,28 @@ Notes:
 - `node --check game.js` passed after the mockup-driven menu layout update. Temporary Playwright screenshots confirmed inventory and skills fit with no console errors or detected frame overflow.
 - Corrected the menu implementation to use the user's actual `menu inventory.png` and `menu skills.png` sprites as the menu backgrounds, with transparent top-tab hit zones and live item/skill content overlaid into the sprite panels.
 - `node --check game.js` passed after switching to sprite-backed menus. Temporary Playwright screenshots confirmed both sprite-backed inventory and skills screens render without console errors.
+- Enlarged the sprite-backed menu scale and increased the Skills tab typography/buttons so card text is readable and can wrap to two lines inside each skill cell.
+- `node --check game.js` passed after the menu text sizing update. Playwright local-file smoke reached the game but canvas export was blocked by local asset tainting; the static-server retry was blocked by Windows `spawn EPERM`.
+- Added short test biomes: the moose stays centered horizontally while left/right input changes world travel, each biome has a placeholder bazaar near its start and a border crossing near its end, and biome color tints/road offsets change as travel advances.
+- Added current biome/travel info to `render_game_to_text` and a small in-canvas biome label for testing.
+- `node --check game.js` passed after the biome changes.
+- Attempted the Playwright movement smoke test, but Chromium launch is still blocked with Windows `spawn EPERM`.
+- Reworked biomes from scrolling distance into fixed full-screen map screens: bazaar, road, border. The moose moves normally again, right-edge progression advances screens, cars only spawn on the road screen, and crossing the border advances to the next biome bazaar.
+- `node --check game.js` passed after the fixed-screen biome rework.
+- Attempted the Playwright screen-progression smoke test, but Chromium launch is still blocked with Windows `spawn EPERM`.
+- Added two-way map screen travel: walking right advances and walking left goes back, including crossing from a biome bazaar back to the previous biome border.
+- Added four bazaar stands with moose sellers: Sell items, Clothes, Food, and Skills. Pressing E near a stand opens the existing menu to the matching shop tab/placeholder, with `activeShopKey` and nearby stand info exposed in `render_game_to_text`.
+- `node --check game.js` passed after the bazaar stand interaction changes.
+- Attempted the Playwright bazaar interaction smoke test, but Chromium launch is still blocked with Windows `spawn EPERM`.
+- Reworked bazaar stand interaction so E opens an in-canvas shop view instead of the existing menu. The shop overlay pauses gameplay, shows placeholder/current rows for each shop type, exposes `shopOpen` in `render_game_to_text`, and closes with E or Esc.
+- `node --check game.js` passed after the in-canvas shop view change.
+- Attempted the Playwright shop-view smoke test, but Chromium launch is still blocked with Windows `spawn EPERM`.
+- Added real bazaar-only transactions in the in-canvas shop view: Up/Down selects rows, Enter/Space acts, Esc/E closes. Sell shop sells one inventory item per action, Food shop buys existing burgers/ice cream/cigarettes, and Skills shop upgrades existing skills.
+- Gated old menu selling and skill upgrades so transactions only happen through the matching bazaar shop (`activeShopKey` is `sell` or `skills`).
+- `node --check game.js` passed after the bazaar-only buy/sell changes.
+- Attempted the Playwright buy/sell smoke test, but Chromium launch is still blocked with Windows `spawn EPERM`.
+- Restored the old/classic Moose Menu look at the user's request by loading `classic-menu.css` after `style.css`, bringing back text tabs, the parchment/brown frame, the larger 24-slot inventory grid, and classic skills cards while keeping the current menu behavior.
+- `node --check game.js` passed after restoring the classic menu look.
 
 TODO:
 - Visually inspect the new grass tile background in a real browser once Chromium/browser launch is available.

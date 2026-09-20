@@ -24,31 +24,56 @@
 
         <canvas id="gameCanvas"></canvas>
 
+        <div id="vitals-panel" aria-label="Moose vitals">
+            <div class="vital-row" data-vital="health">
+                <span class="vital-track"><span id="health-fill" class="vital-fill"></span></span>
+            </div>
+            <div class="vital-row" data-vital="energy">
+                <span class="vital-track"><span id="energy-fill" class="vital-fill"></span></span>
+            </div>
+            <div class="vital-row" data-vital="cold">
+                <span class="vital-track"><span id="cold-fill" class="vital-fill"></span></span>
+            </div>
+        </div>
+
         <aside id="inventory-panel" class="hidden" aria-label="Menu">
-            <div class="menu-frame">
+            <div class="menu-frame" data-active-tab="inventory">
                 <div class="inventory-header">
                     <h2>Moose Menu</h2>
                     <button id="inventory-close" type="button" aria-label="Close menu">x</button>
                 </div>
                 <nav class="menu-tabs" aria-label="Menu sections">
-                    <button class="menu-tab active" type="button">Inventory</button>
-                    <button class="menu-tab" type="button">Map</button>
-                    <button class="menu-tab" type="button">Skills</button>
-                    <button class="menu-tab" type="button">Notes</button>
+                    <button class="menu-tab active" type="button" data-menu-tab="inventory" aria-label="Inventory">
+                    </button>
+                    <button class="menu-tab" type="button" data-menu-tab="skills" aria-label="Skills">
+                    </button>
+                    <button class="menu-tab" type="button" data-menu-tab="map" aria-label="Map">
+                    </button>
+                    <button class="menu-tab" type="button" data-menu-tab="notes" aria-label="Notes">
+                    </button>
                 </nav>
-                <section class="menu-content" aria-label="Inventory">
+                <section class="menu-content menu-section active" data-menu-section="inventory" aria-label="Inventory">
                     <div id="inventory-list"></div>
                 </section>
+                <section class="menu-content menu-section" data-menu-section="map" aria-label="Map">
+                    <p class="empty-menu-note">No map drawn yet.</p>
+                </section>
+                <section class="menu-content menu-section" data-menu-section="skills" aria-label="Skills">
+                    <div id="skills-list"></div>
+                </section>
+                <section class="menu-content menu-section" data-menu-section="notes" aria-label="Notes">
+                    <p class="empty-menu-note">No notes scratched into the bark yet.</p>
+                </section>
                 <div class="menu-footer">
-                    <span>Roadside goods</span>
-                    <span>Press I to close</span>
+                    <span id="moose-coins">0 MC</span>
+                    <span id="menu-help">Hover item: E sells 1 / F sells 10 / T sells all</span>
                 </div>
             </div>
         </aside>
 
         <div id="instructions">
             <p>Use <span>WASD</span> or <span>ARROWS</span> to move</p>
-            <p>Press <span>I</span> to open inventory. Scavenge wrecks at the side of the road!</p>
+            <p>Press <span>E</span> to eat, <span>C</span> to smoke, <span>I</span> for inventory.</p>
         </div>
 
         <div id="mobile-controls" aria-hidden="true">
@@ -59,7 +84,7 @@
 
         <div id="game-over" class="hidden">
             <h2>GAME OVER</h2>
-            <p>The moose needs a break.</p>
+            <p id="game-over-reason">The moose needs a break.</p>
             <button id="restart-btn">Try Again</button>
         </div>
     </div>

@@ -4,6 +4,16 @@ const inventoryToggle = document.getElementById('inventory-toggle');
 const inventoryPanel = document.getElementById('inventory-panel');
 const inventoryClose = document.getElementById('inventory-close');
 const inventoryList = document.getElementById('inventory-list');
+const skillsList = document.getElementById('skills-list');
+const mooseCoinsEl = document.getElementById('moose-coins');
+const menuHelp = document.getElementById('menu-help');
+const menuFrame = document.querySelector('.menu-frame');
+const healthFill = document.getElementById('health-fill');
+const energyFill = document.getElementById('energy-fill');
+const coldFill = document.getElementById('cold-fill');
+const gameOverReasonEl = document.getElementById('game-over-reason');
+const menuTabs = Array.from(document.querySelectorAll('.menu-tab[data-menu-tab]'));
+const menuSections = Array.from(document.querySelectorAll('.menu-section[data-menu-section]'));
 
 // Load tree sprite and pre-tint to avoid severe performance lag 
 const treeImg = new Image();
@@ -31,6 +41,12 @@ const CAR_SPRITES = [
     img.src = sprite.src;
     return { ...sprite, img };
 });
+
+const GANGSTER_CAR_SPRITE = (() => {
+    const img = new Image();
+    img.src = 'gangster car.png';
+    return { color: 'gangster', src: 'gangster car.png', weight: 1, img };
+})();
 
 function pickCarSprite() {
     const totalWeight = CAR_SPRITES.reduce((sum, sprite) => sum + sprite.weight, 0);
@@ -89,14 +105,24 @@ function pickTruckSprite() {
 }
 
 function pickVehicleType() {
+    if (Math.random() < 0.01) return 'gangsterCar';
+
+    const bonusLevels = getSkillBonusLevels('truckSearcher');
+    const bigVehicleBonus = Math.min(0.4, bonusLevels * 0.05);
+    const vanChance = 0.20 + bigVehicleBonus * 0.6;
+    const truckChance = 0.05 + bigVehicleBonus * 0.4;
+    const carChance = 1 - vanChance - truckChance;
     const roll = Math.random();
-    if (roll < 0.75) return 'car';
-    if (roll < 0.95) return 'van';
+    if (roll < carChance) return 'car';
+    if (roll < carChance + vanChance) return 'van';
     return 'truck';
 }
 
 const roadImg = new Image();
 roadImg.src = 'road.png';
+
+const grassImg = new Image();
+grassImg.src = 'grass.png';
 
 const lanternImg = new Image();
 lanternImg.src = 'lantern.png';
@@ -115,6 +141,16 @@ mooseImgs.left[0].src = 'moose_left 1.png';
 mooseImgs.left[1].src = 'moose_left 2.png';
 mooseImgs.right[0].src = 'moose_right 1.png';
 mooseImgs.right[1].src = 'moose_right 2.png';
+
+const smokingImgs = [new Image(), new Image(), new Image(), new Image()];
+smokingImgs.forEach((img, index) => {
+    img.src = `smoking ${index + 1}.png`;
+});
+
+const eatingImgs = [new Image(), new Image(), new Image()];
+eatingImgs.forEach((img, index) => {
+    img.src = `eating ${index + 1}.png`;
+});
 
 const gameOverEl = document.getElementById('game-over');
 const restartBtn = document.getElementById('restart-btn');
@@ -154,42 +190,175 @@ let TOP_SAFE_Y = 100;
 // Road boundaries for visibility logic
 let ROAD_TOP = 280;
 let ROAD_BOTTOM = 460;
-const VISION_MARGIN = 90; // moose seen near the road, not deep in the woods
+const VISION_MARGIN = 145; // moose seen near the road, not deep in the woods
 
 const VEHICLE_TUNING = {
     car: {
         baseSpeed: () => 10.2 + Math.random() * 6.8,
         brakeHardness: () => 0.990 + Math.random() * 0.004,
         laneSwitchSpeed: () => 1.2 + Math.random() * 0.7,
-        baseSpinChance: 0.022
+        baseSpinChance: 0.04
+    },
+    gangsterCar: {
+        baseSpeed: () => 18.5 + Math.random() * 5.5,
+        brakeHardness: () => 0.997 + Math.random() * 0.002,
+        laneSwitchSpeed: () => 1.45 + Math.random() * 0.8,
+        baseSpinChance: 0.035
     },
     van: {
         baseSpeed: () => 9.0 + Math.random() * 5.4,
         brakeHardness: () => 0.996 + Math.random() * 0.002,
         laneSwitchSpeed: () => 0.85 + Math.random() * 0.5,
-        baseSpinChance: 0.012
+        baseSpinChance: 0.024
     },
     truck: {
         baseSpeed: () => 7.2 + Math.random() * 4.6,
         brakeHardness: () => 0.998 + Math.random() * 0.0012,
         laneSwitchSpeed: () => 0.45 + Math.random() * 0.25,
-        baseSpinChance: 0.006
+        baseSpinChance: 0.014
     }
 };
 
+const MAX_STAT = 100;
+const ENERGY_DRAIN_PER_FRAME = 0.034;
+const COLD_GAIN_PER_FRAME = 0.012;
+const CRASH_DAMAGE = {
+    car: 28,
+    gangsterCar: 36,
+    van: 44,
+    truck: 64
+};
+const CRASH_INVULNERABILITY_FRAMES = 70;
+const ACTION_ANIMATION_FRAMES = 120;
+const CONSUMABLE_EFFECTS = {
+    burgers: { health: 24, energy: 34, cold: 0 },
+    iceCream: { health: 10, energy: 16, cold: 15 },
+    cigarettePacks: { health: 0, energy: 0, cold: -34 }
+};
+
 const INVENTORY_ITEMS = [
-    { key: 'moneyBills', label: 'Money bills', src: 'money bill.png' },
-    { key: 'phones', label: 'Phones', src: 'phone.png' },
-    { key: 'burgers', label: 'Burgers', src: 'burger.png' },
-    { key: 'laptops', label: 'Laptops', src: 'laptop.png' },
-    { key: 'cigarettePacks', label: 'Cigarette packs', src: 'cigarettes.png' },
-    { key: 'iceCream', label: 'Ice cream', src: 'ice cream.png' },
-    { key: 'furniture', label: 'Furniture', src: 'furniture.png' },
-    { key: 'constructionMaterial', label: 'Construction material', src: 'construction material.png' }
+    { key: 'moneyBills', label: 'Money bills', src: 'money bill.png', value: 1 },
+    { key: 'phones', label: 'Phones', src: 'phone.png', value: 50 },
+    { key: 'burgers', label: 'Burgers', src: 'burger.png', value: 10 },
+    { key: 'laptops', label: 'Laptops', src: 'laptop.png', value: 100 },
+    { key: 'cigarettePacks', label: 'Cigarette packs', src: 'cigarettes.png', value: 30 },
+    { key: 'iceCream', label: 'Ice cream', src: 'ice cream.png', value: 15 },
+    { key: 'furniture', label: 'Furniture', src: 'furniture.png', value: 75 },
+    { key: 'constructionMaterial', label: 'Construction material', src: 'construction material.png', value: 50 }
 ];
-const INVENTORY_SLOT_COUNT = 24;
+const INVENTORY_SLOT_COUNT = 15;
+const SKILL_BASE_COST = 2000;
+const SKILL_COST_GROWTH = 1.65;
+const SKILLS = [
+    {
+        key: 'antlers',
+        name: 'Antlers',
+        description: 'They scare the drivers and make them spin more often.'
+    },
+    {
+        key: 'speed',
+        name: 'Speed',
+        description: 'It makes you move faster and scare more sudden.'
+    },
+    {
+        key: 'luck',
+        name: 'Luck',
+        description: 'With good luck you can get more items out of a vehicle.'
+    },
+    {
+        key: 'seller',
+        name: 'Seller',
+        description: 'You can sell the products for a higher price.'
+    },
+    {
+        key: 'truckSearcher',
+        name: 'Truck searcher',
+        description: 'Bigger vehicles come more often.'
+    },
+    {
+        key: 'skin',
+        name: 'Skin',
+        description: 'Its better in the warm.'
+    },
+    {
+        key: 'mass',
+        name: 'Mass',
+        description: 'You can ram the cars better.'
+    },
+    {
+        key: 'efficiency',
+        name: 'Efficiency',
+        description: 'You dont consume much energy.'
+    }
+];
 
 const inventory = Object.fromEntries(INVENTORY_ITEMS.map(item => [item.key, 0]));
+const skillLevels = Object.fromEntries(SKILLS.map(skill => [skill.key, 1]));
+let mooseCoins = 0;
+let activeInventoryKey = null;
+let activeMenuTab = 'inventory';
+let vitals = {
+    health: MAX_STAT,
+    energy: MAX_STAT,
+    cold: 0
+};
+let deathReason = '';
+let crashInvulnerability = 0;
+
+function clampStat(value) {
+    return Math.max(0, Math.min(MAX_STAT, value));
+}
+
+function renderVitals() {
+    setVitalFill(healthFill, vitals.health);
+    setVitalFill(energyFill, vitals.energy);
+    setVitalFill(coldFill, vitals.cold);
+}
+
+function setVitalFill(element, value) {
+    if (!element) return;
+    const percent = clampStat(value);
+    element.style.width = '100%';
+    element.style.clipPath = 'none';
+    element.style.transform = `translateX(-50%) scaleY(${Math.max(0.02, percent / 100)})`;
+}
+
+function canUseInventoryItem(key) {
+    return Object.prototype.hasOwnProperty.call(CONSUMABLE_EFFECTS, key);
+}
+
+function useInventoryItem(key) {
+    if (!canUseInventoryItem(key) || inventory[key] <= 0 || !gameActive) return false;
+    const effect = CONSUMABLE_EFFECTS[key];
+    inventory[key]--;
+    vitals.health = clampStat(vitals.health + effect.health);
+    vitals.energy = clampStat(vitals.energy + effect.energy);
+    vitals.cold = clampStat(vitals.cold + effect.cold);
+    if (key === 'cigarettePacks' && moose) moose.startSmoking();
+    if ((key === 'burgers' || key === 'iceCream') && moose) moose.startEating();
+    if (inventory[key] <= 0 && activeInventoryKey === key) activeInventoryKey = null;
+    renderVitals();
+    renderInventory();
+    return true;
+}
+
+function eatQuickFood() {
+    if (inventory.burgers > 0) {
+        useInventoryItem('burgers');
+    } else if (inventory.iceCream > 0) {
+        useInventoryItem('iceCream');
+    }
+}
+
+function smokeQuickCigarette() {
+    if (inventory.cigarettePacks > 0) useInventoryItem('cigarettePacks');
+}
+
+function checkVitalDeath() {
+    if (vitals.health <= 0) gameOver('Health hit zero.');
+    else if (vitals.energy <= 0) gameOver('Energy ran out.');
+    else if (vitals.cold >= MAX_STAT) gameOver('The cold took over.');
+}
 
 function randomInt(min, max) {
     return Math.floor(min + Math.random() * (max - min + 1));
@@ -222,7 +391,12 @@ function rollVehicleLoot(vehicle) {
     const drop = {};
     const spriteColor = vehicle.sprite ? vehicle.sprite.color : '';
 
-    if (vehicle.vehicleType === 'truck' && spriteColor === 'debank') {
+    if (vehicle.vehicleType === 'gangsterCar') {
+        addRangeDrop(drop, 'moneyBills', 2000, 5000);
+        addRangeDrop(drop, 'cigarettePacks', 20, 50);
+        addRangeDrop(drop, 'phones', 5, 10);
+        addRangeDrop(drop, 'laptops', 2, 10);
+    } else if (vehicle.vehicleType === 'truck' && spriteColor === 'debank') {
         addRangeDrop(drop, 'moneyBills', 200, 500);
         addRangeDrop(drop, 'phones', 1, 1);
         addRangeDrop(drop, 'laptops', 5, 10, true);
@@ -258,7 +432,53 @@ function rollVehicleLoot(vehicle) {
         addRangeDrop(drop, 'cigarettePacks', 0, 2);
     }
 
-    return drop;
+    return applyLuckToDrop(drop);
+}
+
+function getSkillBonusLevels(key) {
+    return Math.max(0, (skillLevels[key] || 1) - 1);
+}
+
+function getMooseSpeed() {
+    return 3.5 + getSkillBonusLevels('speed') * 0.2;
+}
+
+function getVehicleBaseSpinChance(vehicleType) {
+    return VEHICLE_TUNING[vehicleType].baseSpinChance + getSkillBonusLevels('antlers') * 0.002;
+}
+
+function getSellMultiplier() {
+    return 1 + getSkillBonusLevels('seller') * 0.1;
+}
+
+function getItemSellValue(item) {
+    return Math.max(1, Math.round(item.value * getSellMultiplier()));
+}
+
+function getColdGain() {
+    return COLD_GAIN_PER_FRAME * Math.max(0.35, 1 - getSkillBonusLevels('skin') * 0.08);
+}
+
+function getEnergyDrain() {
+    return ENERGY_DRAIN_PER_FRAME * Math.max(0.35, 1 - getSkillBonusLevels('efficiency') * 0.08);
+}
+
+function getCrashDamageMultiplier() {
+    return Math.max(0.35, 1 - getSkillBonusLevels('mass') * 0.09);
+}
+
+function applyLuckToDrop(drop) {
+    const bonusLevels = getSkillBonusLevels('luck');
+    if (bonusLevels <= 0) return drop;
+
+    const bonusRate = Math.min(0.5, bonusLevels * 0.04);
+    const boostedDrop = {};
+    for (const [key, amount] of Object.entries(drop)) {
+        const guaranteedBonus = Math.floor(amount * bonusRate);
+        const chanceBonus = Math.random() < ((amount * bonusRate) % 1) ? 1 : 0;
+        boostedDrop[key] = amount + guaranteedBonus + chanceBonus;
+    }
+    return boostedDrop;
 }
 
 function addLootToInventory(drop) {
@@ -268,23 +488,180 @@ function addLootToInventory(drop) {
     renderInventory();
 }
 
+function getInventoryItem(key) {
+    return INVENTORY_ITEMS.find(item => item.key === key);
+}
+
+function renderMooseCoins() {
+    if (mooseCoinsEl) mooseCoinsEl.textContent = `${mooseCoins} MC`;
+}
+
+function getSkillUpgradeCost(key) {
+    const level = skillLevels[key] || 1;
+    return Math.round((SKILL_BASE_COST * Math.pow(SKILL_COST_GROWTH, level - 1)) / 25) * 25;
+}
+
 function renderInventory() {
     if (!inventoryList) return;
-    const slots = Array.from({ length: INVENTORY_SLOT_COUNT }, (_, index) => INVENTORY_ITEMS[index] || null);
+    const collectedItems = INVENTORY_ITEMS.filter(item => inventory[item.key] > 0);
+    const slots = Array.from({ length: INVENTORY_SLOT_COUNT }, (_, index) => collectedItems[index] || null);
     inventoryList.innerHTML = slots.map(item => {
         if (!item) return '<div class="inventory-slot empty"></div>';
-        return `<div class="inventory-slot">
-            <img src="${item.src}" alt="" class="inventory-icon">
+        const sellValue = getItemSellValue(item);
+        const sellOnePrice = sellValue;
+        const sellTenAmount = Math.min(10, inventory[item.key]);
+        const sellTenPrice = sellTenAmount * sellValue;
+        const sellAllAmount = inventory[item.key];
+        const sellAllPrice = sellAllAmount * sellValue;
+        const useButton = canUseInventoryItem(item.key)
+            ? `<button class="inventory-use-action" type="button" data-use-item="${item.key}">Use</button>`
+            : '';
+        return `<div class="inventory-slot item-${item.key}" role="button" tabindex="0" data-key="${item.key}" aria-label="${item.label}, ${inventory[item.key]} available, ${sellValue} MC each">
+            <span class="inventory-icon-frame">
+                <img src="${item.src}" alt="" class="inventory-icon">
+            </span>
             <span class="inventory-count">${inventory[item.key]}</span>
-            <span class="inventory-name">${item.label}</span>
+            <span class="inventory-hover-info">
+                <span class="inventory-name">${item.label}</span>
+                ${useButton}
+                <button class="inventory-sell-action" type="button" data-sell-amount="1">Sell 1: ${sellOnePrice} MC</button>
+                <button class="inventory-sell-action" type="button" data-sell-amount="10">Sell 10: ${sellTenPrice} MC</button>
+                <button class="inventory-sell-action" type="button" data-sell-amount="all">Sell all: ${sellAllPrice} MC</button>
+            </span>
         </div>`;
     }).join('');
+
+    inventoryList.querySelectorAll('.inventory-slot[data-key]').forEach(slot => {
+        slot.addEventListener('mouseenter', () => activeInventoryKey = slot.dataset.key);
+        slot.addEventListener('mouseleave', () => {
+            if (activeInventoryKey === slot.dataset.key) activeInventoryKey = null;
+        });
+        slot.addEventListener('focus', () => activeInventoryKey = slot.dataset.key);
+        slot.addEventListener('blur', () => {
+            if (activeInventoryKey === slot.dataset.key) activeInventoryKey = null;
+        });
+        slot.addEventListener('click', e => {
+            if (e.target.closest('.inventory-sell-action')) return;
+            activeInventoryKey = slot.dataset.key;
+            slot.focus();
+        });
+        slot.addEventListener('keydown', e => {
+            if (e.code !== 'Enter' && e.code !== 'Space') return;
+            e.preventDefault();
+            activeInventoryKey = slot.dataset.key;
+            slot.focus();
+        });
+    });
+    inventoryList.querySelectorAll('.inventory-sell-action').forEach(button => {
+        button.addEventListener('click', e => {
+            e.stopPropagation();
+            const slot = button.closest('.inventory-slot[data-key]');
+            if (!slot) return;
+            const amount = button.dataset.sellAmount === 'all' ? inventory[slot.dataset.key] : Number(button.dataset.sellAmount);
+            activeInventoryKey = slot.dataset.key;
+            sellInventoryItem(slot.dataset.key, amount);
+        });
+    });
+    inventoryList.querySelectorAll('.inventory-use-action').forEach(button => {
+        button.addEventListener('click', e => {
+            e.stopPropagation();
+            activeInventoryKey = button.dataset.useItem;
+            useInventoryItem(button.dataset.useItem);
+        });
+    });
+    renderMooseCoins();
+    renderSkills();
+}
+
+function renderSkills() {
+    if (!skillsList) return;
+    skillsList.innerHTML = SKILLS.map(skill => {
+        const level = skillLevels[skill.key] || 1;
+        const cost = getSkillUpgradeCost(skill.key);
+        const canAfford = mooseCoins >= cost;
+        return `<article class="skill-card">
+            <h3 class="skill-title">${skill.name}</h3>
+            <span class="skill-level">Level ${level}</span>
+            <p class="skill-description">${skill.description}</p>
+            <div class="skill-footer">
+                <span class="skill-price">${cost} MC</span>
+                <button class="skill-upgrade" type="button" data-skill="${skill.key}" ${canAfford ? '' : 'disabled'}>Upgrade</button>
+            </div>
+        </article>`;
+    }).join('');
+
+    skillsList.querySelectorAll('.skill-upgrade[data-skill]').forEach(button => {
+        button.addEventListener('click', () => upgradeSkill(button.dataset.skill));
+    });
+}
+
+function upgradeSkill(key) {
+    if (!Object.prototype.hasOwnProperty.call(skillLevels, key)) return;
+    const cost = getSkillUpgradeCost(key);
+    if (mooseCoins < cost) return;
+    mooseCoins -= cost;
+    skillLevels[key]++;
+    renderInventory();
+}
+
+function sellInventoryItem(key, amount) {
+    const item = getInventoryItem(key);
+    if (!item || inventory[key] <= 0) return;
+    const sold = Math.min(amount, inventory[key]);
+    inventory[key] -= sold;
+    mooseCoins += sold * getItemSellValue(item);
+    if (inventory[key] <= 0 && activeInventoryKey === key) activeInventoryKey = null;
+    renderInventory();
+}
+
+function getCrashDamage(car) {
+    const baseDamage = CRASH_DAMAGE[car.vehicleType] || CRASH_DAMAGE.car;
+    const speedFactor = Math.max(0.75, car.currentSpeed / 10);
+    return Math.round(baseDamage * speedFactor * getCrashDamageMultiplier());
+}
+
+function damageMooseFromCrash(car) {
+    if (crashInvulnerability > 0) return;
+    vitals.health = clampStat(vitals.health - getCrashDamage(car));
+    crashInvulnerability = CRASH_INVULNERABILITY_FRAMES;
+    renderVitals();
+    checkVitalDeath();
+}
+
+function isInventoryOpen() {
+    return inventoryPanel ? !inventoryPanel.classList.contains('hidden') : false;
 }
 
 function setInventoryOpen(isOpen) {
     if (!inventoryPanel || !inventoryToggle) return;
     inventoryPanel.classList.toggle('hidden', !isOpen);
     inventoryToggle.setAttribute('aria-expanded', String(isOpen));
+    if (isOpen) {
+        Object.keys(keys).forEach(key => keys[key] = false);
+        resetJoystick();
+    } else {
+        activeInventoryKey = null;
+    }
+}
+
+function setMenuTab(tabName) {
+    activeMenuTab = tabName;
+    if (menuFrame) menuFrame.dataset.activeTab = tabName;
+    menuTabs.forEach(tab => {
+        const isActive = tab.dataset.menuTab === tabName;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', String(isActive));
+    });
+    menuSections.forEach(section => {
+        section.classList.toggle('active', section.dataset.menuSection === tabName);
+    });
+    if (menuHelp) {
+        menuHelp.textContent = tabName === 'inventory'
+            ? 'Hover item: U uses / E sells 1 / F sells 10 / T sells all'
+            : tabName === 'skills'
+                ? 'Buy upgrades with MC from selling scavenged items'
+                : 'More menu pages coming soon';
+    }
 }
 
 function toggleInventory() {
@@ -384,8 +761,21 @@ moose = {
     direction: 'up',
     renderAngle: 0,
     moving: false,
+    smokingFramesLeft: 0,
+    eatingFramesLeft: 0,
+    startSmoking() {
+        this.eatingFramesLeft = 0;
+        this.smokingFramesLeft = ACTION_ANIMATION_FRAMES;
+    },
+    startEating() {
+        this.smokingFramesLeft = 0;
+        this.eatingFramesLeft = ACTION_ANIMATION_FRAMES;
+    },
+    isActionAnimating() {
+        return this.smokingFramesLeft > 0 || this.eatingFramesLeft > 0;
+    },
     update() {
-        const speed = 3.5;
+        const speed = getMooseSpeed();
         let dx = 0; let dy = 0;
 
         if (keys['KeyA'] || keys['ArrowLeft']) dx -= speed;
@@ -420,6 +810,9 @@ moose = {
             this.x = previousX;
             this.y = previousY;
         }
+        if (this.moving && (this.x !== previousX || this.y !== previousY)) {
+            vitals.energy = clampStat(vitals.energy - getEnergyDrain());
+        }
 
         // SCAVENGING
         for (let i = cars.length - 1; i >= 0; i--) {
@@ -439,18 +832,32 @@ moose = {
     },
     draw() {
         const frames = mooseImgs[this.direction];
-        const img = (this.moving && frame % 40 < 20) ? frames[1] : frames[0];
+        const isSmoking = this.smokingFramesLeft > 0;
+        const isEating = this.eatingFramesLeft > 0;
+        const actionImgs = isSmoking ? smokingImgs : isEating ? eatingImgs : null;
+        const actionFramesLeft = isSmoking ? this.smokingFramesLeft : this.eatingFramesLeft;
+        const actionFrame = actionImgs
+            ? Math.min(
+                actionImgs.length - 1,
+                Math.floor((ACTION_ANIMATION_FRAMES - actionFramesLeft) / (ACTION_ANIMATION_FRAMES / actionImgs.length))
+            )
+            : 0;
+        const baseImg = (this.moving && frame % 40 < 20) ? frames[1] : frames[0];
+        const img = actionImgs ? actionImgs[actionFrame] : baseImg;
 
         ctx.save();
         ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
-        ctx.rotate(this.renderAngle);
+        ctx.rotate(actionImgs ? 0 : this.renderAngle);
 
         if (img && img.complete && img.naturalWidth > 0) {
-            const maxDim = Math.max(img.naturalWidth, img.naturalHeight);
+            const sizeSource = actionImgs && baseImg && baseImg.complete && baseImg.naturalWidth > 0 ? baseImg : img;
+            const maxDim = Math.max(sizeSource.naturalWidth, sizeSource.naturalHeight);
             const scale = 60 / maxDim;
-            const w = img.naturalWidth * scale;
-            const h = img.naturalHeight * scale;
+            const w = sizeSource.naturalWidth * scale;
+            const h = sizeSource.naturalHeight * scale;
             ctx.drawImage(img, -w / 2, -h / 2 - 10, w, h);
+            if (isSmoking) this.smokingFramesLeft--;
+            if (isEating) this.eatingFramesLeft--;
         } else {
             ctx.translate(-this.width / 2, -this.height / 2);
             ctx.strokeStyle = '#8b4513';
@@ -466,6 +873,8 @@ moose = {
             ctx.fillRect(0, 0, this.width, this.height);
             ctx.fillStyle = '#dda15e';
             ctx.fillRect(this.width - 2, -6, 10, 8);
+            if (isSmoking) this.smokingFramesLeft--;
+            if (isEating) this.eatingFramesLeft--;
         }
         ctx.restore();
     }
@@ -478,19 +887,20 @@ class Car {
         this.laneIndex = laneIndex;
         this.direction = laneIndex === 0 ? 1 : -1;
         this.vehicleType = forcedType || pickVehicleType();
+        this.isGangsterCar = this.vehicleType === 'gangsterCar';
         this.isVan = this.vehicleType === 'van';
         this.isTruck = this.vehicleType === 'truck';
         this.tuning = VEHICLE_TUNING[this.vehicleType];
-        this.width = this.isTruck ? 118 + Math.random() * 18 : this.isVan ? 84 + Math.random() * 12 : CAR_WIDTH + Math.random() * 8;
+        this.width = this.isTruck ? 118 + Math.random() * 18 : this.isVan ? 84 + Math.random() * 12 : this.isGangsterCar ? CAR_WIDTH + 10 + Math.random() * 8 : CAR_WIDTH + Math.random() * 8;
         this.height = this.isTruck ? 44 : this.isVan ? 36 : CAR_HEIGHT;
         this.x = this.direction === 1 ? -200 : canvas.width + 200;
         this.currentY = LANES_Y[laneIndex];
         this.baseSpeed = this.tuning.baseSpeed();
         this.currentSpeed = this.baseSpeed;
-        this.sprite = this.isTruck ? pickTruckSprite() : this.isVan ? pickVanSprite() : pickCarSprite();
+        this.sprite = this.isTruck ? pickTruckSprite() : this.isVan ? pickVanSprite() : this.isGangsterCar ? GANGSTER_CAR_SPRITE : pickCarSprite();
         this.color = this.isTruck || this.isVan ? `hsl(${Math.random() * 360}, 10%, 60%)` : `hsl(${Math.random() * 360}, 50%, 40%)`;
 
-        this.reactionDistance = this.isTruck ? 560 + Math.random() * 240 : this.isVan ? 480 + Math.random() * 220 : 380 + Math.random() * 180;
+        this.reactionDistance = this.isTruck ? 760 + Math.random() * 300 : this.isVan ? 660 + Math.random() * 280 : this.isGangsterCar ? 620 + Math.random() * 260 : 560 + Math.random() * 240;
         this.brakeHardness = this.tuning.brakeHardness();
         this.laneSwitchSpeed = this.tuning.laneSwitchSpeed();
         this.reactionTimer = Math.floor(10 + Math.random() * 15);
@@ -564,11 +974,11 @@ class Car {
 
                 // Dynamic Spin Chance while reacting
                 this.reactionFrames++;
-                const brakeSpinChance = Math.max(0, 0.995 - effectiveBrakeHardness) * 0.3; // Harder brake = higher chance
-                const timeSpinChance = this.reactionFrames * 0.00003;       // Longer braking = higher chance
+                const brakeSpinChance = Math.max(0, 0.995 - effectiveBrakeHardness) * 0.34; // Harder brake = higher chance
+                const timeSpinChance = this.reactionFrames * 0.00004;       // Longer braking = higher chance
 
-                let baseSpinCh = this.tuning.baseSpinChance;
-                const distMultiplier = 1 - distFactor;
+                let baseSpinCh = getVehicleBaseSpinChance(this.vehicleType);
+                const distMultiplier = Math.pow(1 - distFactor, 2.4);
 
                 if (Math.random() < (baseSpinCh + brakeSpinChance + timeSpinChance) * distMultiplier) {
                     this.isReacting = false;
@@ -690,6 +1100,14 @@ function drawBackground() {
     // Fill everything with grass to avoid any black gaps
     ctx.fillStyle = '#183323';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (grassImg.complete && grassImg.naturalWidth > 0) {
+        const tileSize = 96;
+        for (let y = 0; y < canvas.height; y += tileSize) {
+            for (let x = 0; x < canvas.width; x += tileSize) {
+                ctx.drawImage(grassImg, x, y, tileSize, tileSize);
+            }
+        }
+    }
 
     ctx.fillStyle = '#080a09';
     ctx.fillRect(0, ROAD_TOP + 25, canvas.width, ROAD_BOTTOM - ROAD_TOP);
@@ -756,20 +1174,25 @@ function drawTree(tree) {
 }
 
 function update() {
-    if (!gameActive) return;
+    if (!gameActive || isInventoryOpen()) return;
+    if (moose && moose.isActionAnimating()) return;
     frame++;
+    if (crashInvulnerability > 0) crashInvulnerability--;
+    vitals.cold = clampStat(vitals.cold + getColdGain());
     moose.update();
     spawnCars();
     for (let i = cars.length - 1; i >= 0; i--) {
         const car = cars[i];
         car.update();
         // ONLY collide with non-wrecked cars
-        if (!car.wrecked && checkCollision(moose, car)) gameOver();
+        if (!car.wrecked && checkCollision(moose, car)) damageMooseFromCrash(car);
         // Remove if too far or wreck expired
         if (car.x < -800 || car.x > canvas.width + 800 || (car.wrecked && car.wreckTimer <= 0)) {
             cars.splice(i, 1);
         }
     }
+    renderVitals();
+    checkVitalDeath();
 }
 
 function renderScene() {
@@ -800,8 +1223,10 @@ function draw() {
     });
 }
 
-function gameOver() {
+function gameOver(reason = 'The moose needs a break.') {
+    deathReason = reason;
     gameActive = false;
+    if (gameOverReasonEl) gameOverReasonEl.textContent = reason;
     gameOverEl.classList.remove('hidden');
 }
 
@@ -810,6 +1235,18 @@ function restart() {
     cars = [];
     frame = 0;
     spawnedVehicleCount = 0;
+    mooseCoins = 0;
+    activeInventoryKey = null;
+    vitals = {
+        health: MAX_STAT,
+        energy: MAX_STAT,
+        cold: 0
+    };
+    deathReason = '';
+    crashInvulnerability = 0;
+    for (const key of Object.keys(skillLevels)) {
+        skillLevels[key] = 1;
+    }
     for (const key of Object.keys(inventory)) {
         inventory[key] = 0;
     }
@@ -818,6 +1255,9 @@ function restart() {
     const spawn = findSafeMooseSpawn();
     moose.y = spawn.y;
     moose.x = spawn.x;
+    moose.smokingFramesLeft = 0;
+    moose.eatingFramesLeft = 0;
+    renderVitals();
     gameOverEl.classList.add('hidden');
 }
 
@@ -825,14 +1265,28 @@ function renderGameToText() {
     return JSON.stringify({
         coordinateSystem: 'origin top-left, x right, y down',
         gameActive,
-        inventoryOpen: inventoryPanel ? !inventoryPanel.classList.contains('hidden') : false,
+        deathReason,
+        paused: isInventoryOpen(),
+        inventoryOpen: isInventoryOpen(),
+        mooseCoins,
+        hoveredInventoryItem: activeInventoryKey,
         inventory: { ...inventory },
+        skills: { ...skillLevels },
+        vitals: {
+            health: Number(vitals.health.toFixed(1)),
+            energy: Number(vitals.energy.toFixed(1)),
+            cold: Number(vitals.cold.toFixed(1)),
+            crashInvulnerability
+        },
         moose: {
             x: Math.round(moose.x),
             y: Math.round(moose.y),
             width: moose.width,
             height: moose.height,
-            direction: moose.direction
+            direction: moose.direction,
+            smokingFramesLeft: moose.smokingFramesLeft,
+            eatingFramesLeft: moose.eatingFramesLeft,
+            actionPaused: moose.isActionAnimating()
         },
         road: {
             top: ROAD_TOP,
@@ -909,15 +1363,42 @@ if (joystick && joystickKnob && mobileControls) {
 }
 
 renderInventory();
+setMenuTab(activeMenuTab);
 
 window.addEventListener('keydown', e => {
-    keys[e.code] = true;
     if (e.code === 'KeyI' && !e.repeat) {
         toggleInventory();
+        return;
     }
+    if (isInventoryOpen() && !e.repeat && (e.code === 'KeyE' || e.code === 'KeyF' || e.code === 'KeyT')) {
+        e.preventDefault();
+        const sellAmount = e.code === 'KeyT' ? inventory[activeInventoryKey] : e.code === 'KeyF' ? 10 : 1;
+        sellInventoryItem(activeInventoryKey, sellAmount);
+        return;
+    }
+    if (isInventoryOpen() && !e.repeat && e.code === 'KeyU') {
+        e.preventDefault();
+        useInventoryItem(activeInventoryKey);
+        return;
+    }
+    if (isInventoryOpen()) {
+        e.preventDefault();
+        return;
+    }
+    if (!e.repeat && e.code === 'KeyE') {
+        eatQuickFood();
+        return;
+    }
+    if (!e.repeat && e.code === 'KeyC') {
+        smokeQuickCigarette();
+        return;
+    }
+    keys[e.code] = true;
 });
 window.addEventListener('keyup', e => keys[e.code] = false);
 restartBtn.addEventListener('click', restart);
 if (inventoryToggle) inventoryToggle.addEventListener('click', toggleInventory);
 if (inventoryClose) inventoryClose.addEventListener('click', () => setInventoryOpen(false));
+menuTabs.forEach(tab => tab.addEventListener('click', () => setMenuTab(tab.dataset.menuTab)));
+renderVitals();
 draw();

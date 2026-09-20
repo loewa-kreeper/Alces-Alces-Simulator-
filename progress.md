@@ -32,8 +32,56 @@ Notes:
 - Removed score and level UI/state; wreck collection now only adds loot, and vehicle spawning/speed no longer depends on hidden level progression.
 - Reworked inventory into a centered Stardew-style main menu with tabs and a 24-slot item grid.
 - `node --check game.js` passed after the menu inventory update; Playwright still cannot launch Chromium due to `spawn EPERM`.
+- Added Moose Coin inventory selling: opening the menu pauses game updates, collected-only inventory icons render in larger consistent slots, hovering an item shows name/value, E sells 1, and F sells up to 10.
+- Added item values: money bill 1 MC, phone 50 MC, burger 10 MC, laptop 100 MC, cigarette pack 30 MC, ice cream 15 MC, furniture 75 MC, construction material 50 MC.
+- `node --check game.js` passed after the pause/sell inventory update.
+- Playwright canvas smoke test passed through a temporary local server and confirmed `inventoryOpen: true` plus `paused: true`.
+- A temporary full-page Playwright check confirmed hover selling: selling 1 money bill and up to 10 phones produced 51 MC, removed the zero-count phone icon, showed only collected-item icons, and reported no console errors.
+- Added a Skills tab in the Moose Menu with Antlers, Speed, Luck, and Seller cards showing name, description, current level, upgrade cost, and an Upgrade button.
+- Skill levels start at 1. Upgrade costs begin at 2000 MC and grow by 1.65x per level, rounded to 25 MC.
+- Hooked skills into gameplay: Antlers adds 0.002 base spin chance per bonus level, Speed adds 0.2 moose speed per bonus level, Luck adds roughly 4% extra loot per bonus level, and Seller adds 10% sale value per bonus level.
+- `node --check game.js` passed after skills changes.
+- Playwright direct file test loaded far enough to hit screenshot capture, but canvas export was blocked by local file image tainting. Retried through `python -m http.server`; Chromium launch is still blocked here with `spawn EPERM`.
+- Added inventory sell-all support: T sells the hovered stack, and the hover/focus panel now shows item name plus Sell 1, Sell 10, and Sell all payout rows. The sell rows are clickable for mobile/touch support.
+- `node --check game.js` passed after the sell-all and clickable hover panel changes.
+- Added vitals for the current request: Health/Energy/Cold HUD bars, inventory Use actions for burgers/ice cream/cigarettes, crash damage by vehicle type and speed, cold growth, energy drain while moving, death reasons, and vitals in `render_game_to_text`.
+- `node --check game.js` passed after vitals changes.
+- Playwright client could not launch Chromium because Windows returned `spawn EPERM`; a temporary Node harness with fake DOM/canvas confirmed movement drains energy and raises cold, consumables adjust vitals, and a fast truck damages more than a slower car.
+- Tuned vitals per follow-up: vehicle crash damage is much higher, cold rises faster, `E` eats a burger first then ice cream if no burger is available, and `C` smokes a cigarette pack without opening inventory.
+- `node --check game.js` passed after the follow-up tuning and quick-use hotkeys. Playwright is still blocked by Windows with `spawn EPERM`.
+- Added the four `smoking 1.png` through `smoking 4.png` sprites as a one-second smoking animation triggered whenever a cigarette pack is used, including the `C` hotkey.
+- `node --check game.js` passed after the smoking animation. Playwright is still blocked by Windows with `spawn EPERM`.
+- Extended smoking to two seconds, added `eating 1.png` through `eating 3.png` as a two-second animation for burgers/ice cream, sized action animations to the normal moose draw size, and paused simulation updates during eating/smoking while rendering continues.
+- `node --check game.js` passed after the two-second eating/smoking animation changes. Playwright is still blocked by Windows with `spawn EPERM`.
+- Added `grass.png` as a tiled canvas background before the road layer draws, keeping the old solid green fill as a loading fallback.
+- `node --check game.js` passed after the tiled grass background change.
+- Attempted the Playwright visual smoke test for the grass tile, but Chromium launch is still blocked by Windows with `spawn EPERM`.
+- Implemented `health bar.png`, `energy bar.png`, and `cold bar.png` as the HUD bar artwork; the bars are clipped by stat percentage so the sprites keep their normal proportions.
+- `node --check game.js` passed after the bar sprite HUD change. Playwright is still blocked by Windows with `spawn EPERM`.
+- Removed vitals text labels, made the sprite bars vertical, moved them to the bottom-right corner, and changed bar clipping to fill from the bottom upward.
+- `node --check game.js` passed after the vertical bottom-right bar layout. Playwright is still blocked by Windows with `spawn EPERM`.
+- Fixed invisible bottom-right HUD bars by making the `span` bar tracks block-level elements with explicit HUD dimensions and a higher in-game z-index.
+- Reworked vitals HUD so `health/energy/cold bar.png` are jar frames over colored fills: red for health, green for energy, blue for cold. The fills scale vertically from the bottom and the HUD is anchored to the bottom-right of the game area.
+- Moved the vitals panel out of the header and into the game HUD layer after the canvas, so bottom-right positioning is relative to the game screen. Tightened the liquid fill inset to sit inside the jar frames.
+- Centered the jar liquid fills with `translateX(-50%)`, widened them slightly, and adjusted the fill cavity to rise from the bottom to nearly the top of each jar frame.
+- Made the jar liquid fills thinner and lowered them closer to the very bottom of the jar frames.
+- Added four more skills to the Skills tab: Truck searcher, Skin, Mass, and Efficiency.
+- Hooked Truck searcher into vehicle spawning by shifting some car chance into van/truck chance each level; Skin slows cold gain, Mass reduces crash damage, and Efficiency reduces movement energy drain.
+- `node --check game.js` passed after the new skill additions.
+- Playwright visual/menu smoke test was attempted through a temporary local server, but Chromium launch is still blocked with `spawn EPERM`.
+- Added the 1% `gangsterCar` special vehicle using `gangster car.png`; it is much faster, brakes less than normal cars, has its own crash damage entry, and drops 2000-5000 money bills, 20-50 cigarette packs, 5-10 phones, and 2-10 laptops.
+- `node --check game.js` passed after the gangster car change.
+- Playwright smoke test against the local HTML file was attempted again, but Chromium launch is still blocked with `spawn EPERM`.
+- Reworked the Moose Menu to match the new `menu inventory.png` and `menu skills.png` pixel mockups: icon-only top tab buttons, compact gold/brown board frame, 5x3 inventory grid, and a two-column skills layout that fits all eight skills without scrolling at desktop test size.
+- Added edge-aware inventory sell tooltip positioning so first/last-column hover panels stay readable inside the board.
+- `node --check game.js` passed after the mockup-driven menu layout update. Temporary Playwright screenshots confirmed inventory and skills fit with no console errors or detected frame overflow.
+- Corrected the menu implementation to use the user's actual `menu inventory.png` and `menu skills.png` sprites as the menu backgrounds, with transparent top-tab hit zones and live item/skill content overlaid into the sprite panels.
+- `node --check game.js` passed after switching to sprite-backed menus. Temporary Playwright screenshots confirmed both sprite-backed inventory and skills screens render without console errors.
 
 TODO:
+- Visually inspect the new grass tile background in a real browser once Chromium/browser launch is available.
+- Visually inspect the new vitals HUD and inventory Use buttons in a real browser once Chromium/browser launch is available.
 - Playtest car dodge feel and mobile joystick on an actual phone or device emulator once Chromium can launch.
 - Re-check final brightness, lantern glow, and van scaling visually in a browser.
-- Browser-check the inventory overlay and loot collection flow once Chromium launch is available.
+- Browser-check the inventory overlay and loot collection flow during normal gameplay with real wreck drops, especially on mobile where hover-only info is not available.
+- Browser-check the Skills tab visually and click through a real upgrade after earning at least 2000 MC.
